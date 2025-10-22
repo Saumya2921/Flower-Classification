@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Flower Classification</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.10.0/tf.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- ✅ JS file ka sahi link -->
+    <script src="script.js" defer></script>
+
+    <!-- ✅ Login protection script -->
+    <script>
+      // Check if user is logged in, if not redirect to login page
+      if (localStorage.getItem("isLoggedIn") !== "true") {
+        window.location.href = "login.html";
+      }
+    </script>
+</head>
+<body>
+    <!-- ✅ Logout Button -->
+    <button onclick="logout()" 
+      style="float:right; margin: 20px; background:#764ba2; color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer;">
+      Logout
+    </button>
+
+    <div class="container">
+        <div class="header">
+            <h1>AI Flower Classifier</h1>
+            <p>Upload a flower image and let AI identify the species for you!</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2>Upload Flower Image</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📸</div>
+                    <div class="upload-text">Drag & drop an image here</div>
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        Choose File
+                    </button>
+                    <input type="file" id="fileInput" class="file-input" accept="image/*">
+                </div>
+                <img id="imagePreview" class="image-preview" alt="Preview">
+            </div>
+
+            <div class="results-section">
+                <h2>Classification Results</h2>
+                <div id="results">
+                    <p style="text-align: center; color: #999; padding: 40px;">
+                        Upload an image to see classification results
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="model-info">
+            <h3>Model Information</h3>
+            <div id="modelStatus" class="status loading">Loading AI Model...</div>
+            <p>This classifier can identify common flower species including roses, tulips, sunflowers, daisies, and more!</p>
+        </div>
+    </div>
+
+    <!-- ✅ Logout Function -->
+    <script>
+      function logout() {
+        localStorage.removeItem("isLoggedIn");
+        window.location.href = "login.html";
+      }
+    </script>
+</body>
+</html>

@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Flower Classification</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.10.0/tf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .upload-section, .results-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .results-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f8f9ff;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+
+        .prediction-item.top {
+            background: linear-gradient(45deg, #667eea20, #764ba220);
+            border-left-color: #764ba2;
+        }
+
+        .flower-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .confidence {
+            font-size: 1rem;
+            color: #666;
+        }
+
+        .confidence-bar {
+            width: 100px;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-left: 15px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .model-info {
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .status {
+            padding: 10px 20px;
+            border-radius: 25px;
+            margin: 10px 0;
+            display: inline-block;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.ready {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌸 AI Flower Classifier</h1>
+            <p>Upload a flower image and let AI identify the species for you!</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2>Upload Flower Image</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📸</div>
+                    <div class="upload-text">Drag & drop an image here</div>
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        Choose File
+                    </button>
+                    <input type="file" id="fileInput" class="file-input" accept="image/*">
+                </div>
+                <img id="imagePreview" class="image-preview" alt="Preview">
+            </div>
+
+            <div class="results-section">
+                <h2>Classification Results</h2>
+                <div id="results">
+                    <p style="text-align: center; color: #999; padding: 40px;">
+                        Upload an image to see classification results
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="model-info">
+            <h3>Model Information</h3>
+            <div id="modelStatus" class="status loading">Loading AI Model...</div>
+            <p>This classifier can identify common flower species including roses, tulips, sunflowers, daisies, and more!</p>
+        </div>
+    </div>
+
+    <script>
+        // Flower classes that our model can classify
+        const FLOWER_CLASSES = [
+            'Daisy', 'Rose', 'Tulip', 'Sunflower', 'Dandelion',
+            'Iris', 'Lily', 'Orchid', 'Poppy', 'Lavender',
+            'Marigold', 'Carnation', 'Chrysanthemum', 'Peony', 'Hibiscus'
+        ];
+
+        let model = null;
+        const modelStatus = document.getElementById('modelStatus');
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const imagePreview = document.getElementById('imagePreview');
+        const results = document.getElementById('results');
+
+        // Initialize the application
+        async function initializeApp() {
+            try {
+                modelStatus.textContent = 'Loading AI Model...';
+                modelStatus.className = 'status loading';
+                
+                // Create a simple CNN model for demonstration
+                // In a real application, you'd load a pre-trained model
+                model = await createFlowerClassificationModel();
+                
+                modelStatus.textContent = 'AI Model Ready!';
+                modelStatus.className = 'status ready';
+            } catch (error) {
+                console.error('Model loading failed:', error);
+                modelStatus.textContent = 'Model Loading Failed';
+                modelStatus.className = 'status error';
+            }
+        }
+
+        // Create a simple CNN model (placeholder - in production, load pre-trained weights)
+        async function createFlowerClassificationModel() {
+            const model = tf.sequential({
+                layers: [
+                    tf.layers.conv2d({
+                        inputShape: [224, 224, 3],
+                        filters: 32,
+                        kernelSize: 3,
+                        activation: 'relu',
+                    }),
+                    tf.layers.maxPooling2d({ poolSize: 2 }),
+                    tf.layers.conv2d({ filters: 64, kernelSize: 3, activation: 'relu' }),
+                    tf.layers.maxPooling2d({ poolSize: 2 }),
+                    tf.layers.conv2d({ filters: 64, kernelSize: 3, activation: 'relu' }),
+                    tf.layers.flatten(),
+                    tf.layers.dense({ units: 64, activation: 'relu' }),
+                    tf.layers.dropout({ rate: 0.5 }),
+                    tf.layers.dense({ units: FLOWER_CLASSES.length, activation: 'softmax' })
+                ]
+            });
+
+            // Compile the model
+            model.compile({
+                optimizer: 'adam',
+                loss: 'categoricalCrossentropy',
+                metrics: ['accuracy']
+            });
+
+            // Initialize with random weights (in production, load trained weights)
+            await model.predict(tf.randomNormal([1, 224, 224, 3])).data();
+            
+            return model;
+        }
+
+        // Handle file upload
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadArea.addEventListener('drop', handleFileDrop);
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                processImage(file);
+            }
+        }
+
+        function handleFileDrop(event) {
+            event.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = event.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                processImage(file);
+            }
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(event) {
+            event.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        async function processImage(file) {
+            // Show image preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // Show loading state
+            results.innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Analyzing flower image...</p>
+                </div>
+            `;
+
+            try {
+                // Create image element for processing
+                const img = new Image();
+                img.onload = async function() {
+                    const predictions = await classifyImage(img);
+                    displayResults(predictions);
+                };
+                img.src = URL.createObjectURL(file);
+            } catch (error) {
+                console.error('Classification error:', error);
+                results.innerHTML = `
+                    <p style="color: #dc3545; text-align: center; padding: 20px;">
+                        Error processing image. Please try again.
+                    </p>
+                `;
+            }
+        }
+
+        async function classifyImage(imgElement) {
+            if (!model) {
+                throw new Error('Model not loaded');
+            }
+
+            // Preprocess image
+            const tensor = tf.browser.fromPixels(imgElement)
+                .resizeNearestNeighbor([224, 224])
+                .toFloat()
+                .div(tf.scalar(255.0))
+                .expandDims();
+
+            // Get predictions
+            const prediction = await model.predict(tensor).data();
+            tensor.dispose();
+
+            // Convert to readable format
+            const predictions = Array.from(prediction).map((confidence, index) => ({
+                className: FLOWER_CLASSES[index],
+                confidence: confidence
+            }));
+
+            // Sort by confidence
+            predictions.sort((a, b) => b.confidence - a.confidence);
+            
+            return predictions.slice(0, 5); // Top 5 predictions
+        }
+
+        function displayResults(predictions) {
+            const resultsHTML = predictions.map((pred, index) => {
+                const percentage = (pred.confidence * 100).toFixed(1);
+                const isTop = index === 0;
+                
+                return `
+                    <div class="prediction-item ${isTop ? 'top' : ''}">
+                        <div>
+                            <div class="flower-name">${pred.className}</div>
+                            <div class="confidence">${percentage}% confidence</div>
+                        </div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            results.innerHTML = resultsHTML;
+        }
+
+        // Initialize app when page loads
+        window.addEventListener('load', initializeApp);
+    </script>
+</body>
+</html>
